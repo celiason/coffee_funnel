@@ -16,80 +16,6 @@ credentials = service_account.Credentials.from_service_account_info(
 
 client = bigquery.Client(credentials=credentials)
 
-query_funnel = """
-WITH
--- EVENTS
-events AS (
-  SELECT *
-  -- FROM `rusty-creek-coffee.analytics_437086730.events*` -- ALL DATES
-  FROM `rusty-creek-coffee.analytics_437086730.events_2024*` -- ALL DATES
-  -- FROM `rusty-creek-coffee.analytics_437086730.events_intraday_20241024` -- JUST A SPECIFIC DATE
-),
-
--- VISITORS (DEFINES THE GROUP WE FOLLOW THROUGH THE FUNNEL)
-visitors AS (
-  SELECT
-    user_pseudo_id, -- effectively a user_id
-    MIN(event_timestamp) AS min_time, -- gets the earliest Visit for each person
-    MAX(event_timestamp) - MIN(event_timestamp) AS engaged_time
-  FROM events
-  WHERE event_name = 'session_start'
-  GROUP BY 1
-  -- having min(time) between '2020-04-01' and '2020-05-31' -- selects people whose first visit is in this time range
-),
-
--- ITEM VIEWS (FROM THE VISITORS ABOVE)
-views AS (
-  SELECT DISTINCT e.user_pseudo_id
-  FROM visitors v -- ensures we only look at the Visitors defined above
-  INNER JOIN events e on e.user_pseudo_id = v.user_pseudo_id
-  WHERE e.event_name = 'view_item' -- an internal event that defines sign-up
-),
-
--- CART ADDS (FROM THE ITEM VIEWS ABOVE)
-carts AS (
-  SELECT DISTINCT e.user_pseudo_id
-  FROM views v  -- ensures we only look at the Signups defined above
-  INNER JOIN events e on e.user_pseudo_id = v.user_pseudo_id
-  WHERE e.event_name = 'add_to_cart'
-),
-
--- CHECKOUTS (FROM THE CART ADDS ABOVE)
-checkouts AS (
-  SELECT DISTINCT e.user_pseudo_id
-  FROM carts c  -- ensures we only look at the Activations defined above
-  INNER JOIN events e ON e.user_pseudo_id = c.user_pseudo_id
-  WHERE e.event_name = 'begin_checkout'
-),
-
--- PURCHASES (FROM THE CART ADDS ABOVE)
-purchases AS (
-  SELECT DISTINCT e.user_pseudo_id
-  FROM checkouts c  -- ensures we only look at the Activations defined above
-  INNER JOIN events e ON e.user_pseudo_id = c.user_pseudo_id
-  WHERE e.event_name = 'purchase'
-)
-
--- FUNNEL ANALYSIS
-SELECT 'Visit' AS step, COUNT(*) AS freq FROM visitors
-  UNION ALL -- joins the output of queries together (as long as they have the same columns)
-SELECT 'View item' AS step, COUNT(*) AS freq FROM views
-  UNION ALL
-SELECT 'Add to cart' AS step, COUNT(*) AS freq FROM carts
-  UNION ALL
-SELECT 'Checkout' AS step, COUNT(*) AS freq FROM checkouts
-  UNION ALL
-SELECT 'Purchase' AS step, COUNT(*) AS freq FROM purchases
-ORDER BY freq DESC -- applies to the whole result set
-;
-
--- possible predictors of customer sales:
--- amount of time a user spends on the website
--- product description (how well written it is, etc.)
--- product attractivenees (i.e. type of coffee)
--- 
-"""
-
 query = """
 WITH visitors AS (
 SELECT *,
@@ -182,6 +108,8 @@ st.success("Downloaded fresh data!")
 
 st.header("Funnel analysis")
 
+st.markdown("A funnel analysis tracks the number of visitors to a site and follows them through from when they first land on the homepage to when they purchase an item. Places where you see a big drop-off from one level of the funnel to the next indicate potential bottlenecks in user behavior/website design that could be addressed. There is an additional option below to color the plot by region/state.")
+
 # Funnel analysis without regions
 df_funnel = funnel(df)
 df_funnel.reset_index(inplace=True)
@@ -220,9 +148,7 @@ num_days_past = len(df['date'].unique())
 
 st.header("Sale forecasting")
 
-st.write(f"This model is based on sales data for only {num_days_past} days. Interpret at your own risk. :smile:")
-
-st.markdown("The analysis uses Facebook's `Prophet` package in `python` to run an additive model that incorporates seasonality (daily, weekly). The output of the model is the predict sales over time as well as how much confidence there is in the prediction (shaded regions in the plot below).")
+st.write(f"The analysis uses Facebook's `Prophet` package in `python` to run an additive model that incorporates seasonality (daily, weekly). The output of the model is the predict sales over time as well as how much confidence there is in the prediction (shaded regions in the plot below). This model is based on sales data for only {num_days_past} days, so interpret at your own risk. :smile:")
 
 # run_forecast = st.button('Generate sales forecast')
 
