@@ -193,10 +193,11 @@ sales_sum_year = coffee_sales_forecast['yhat'].sum()
 
 st.pyplot(ax)
 
-
+# If we only have past data
 if num_days_future == 0:
     st.write(f"Total revenue over the last {num_days_past} days: ${sales_sum_year:,.2f} :moneybag:")
+# If we are looking into the future
 else:
-    st.write(f"According to the model, the projected daily sales {num_days_past} days from now will be: ${sales_next_year:,.2f}")
+    st.write(f"According to the model, the projected daily sales {num_days_future} days from now will be: ${sales_next_year:,.2f}")
     st.write(f"Total projected revenue over the next {num_days_future} days: ${sales_sum_year:,.2f} :moneybag:")
 
