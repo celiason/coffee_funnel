@@ -157,22 +157,28 @@ num_days_future = st.slider('Days out for forecasting', 0, 365)
 ### Prophet!
 
 # For logistic regression
-cap = 1000
-floor = 0
 
-coffee_sales['cap'] = cap
-coffee_sales['floor'] = floor
+growth_model = 'linear'
+
+if growth_model == 'logistic':
+    cap = 1000
+    floor = 0
+    coffee_sales['cap'] = cap
+    coffee_sales['floor'] = floor
 
 # Fit prophet model
-coffee_sales_model = Prophet(interval_width=0.95, growth='linear', daily_seasonality=True, weekly_seasonality=False)
+coffee_sales_model = Prophet(interval_width=0.95, growth=growth_model, daily_seasonality=True, weekly_seasonality=False)
 coffee_sales_model.fit(coffee_sales)
 
 # num_days_future=365
 
 # Forecast using the model
 coffee_sales_forecast = coffee_sales_model.make_future_dataframe(periods=num_days_future, freq='D')
-coffee_sales_forecast['floor'] = floor
-coffee_sales_forecast['cap'] = cap
+
+if growth_model == 'logistic':
+    coffee_sales_forecast['floor'] = floor
+    coffee_sales_forecast['cap'] = cap
+
 coffee_sales_forecast = coffee_sales_model.predict(coffee_sales_forecast)
 
 plt.figure(figsize=(18, 6))
