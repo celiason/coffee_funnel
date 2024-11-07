@@ -108,13 +108,15 @@ coffee_sales = df.groupby(['date'])[['revenue']].apply('sum')
 coffee_sales.reset_index(inplace=True)
 
 # Backfill with old GA4 data
-old_data = pd.read_csv("data/data-export.csv")
-dates = pd.date_range(start='2023-11-06', end='2024-11-06', freq='W')
-old_data['date'] = dates[old_data['Nth week'].values-1]
-old_data['revenue'] = old_data['Total revenue'] / 7
-odf = pd.DataFrame()
-odf['date'] = pd.date_range(start='2023-11-06', end='2024-11-05', freq='D')
-odf = pd.merge_ordered(odf, old_data, fill_method='ffill')
+# old_data = pd.read_csv("data/data-export.csv")
+# dates = pd.date_range(start='2023-11-06', end='2024-11-06', freq='W')
+# old_data['date'] = dates[old_data['Nth week'].values-1]
+# old_data['revenue'] = old_data['Total revenue'] / 7
+# odf = pd.DataFrame()
+# odf['date'] = pd.date_range(start='2023-11-06', end='2024-11-05', freq='D')
+# odf = pd.merge_ordered(odf, old_data, fill_method='ffill')
+
+odf = pd.read_csv("data/revenue_by_date.csv")
 
 # Do an outer join
 coffee_sales = coffee_sales.merge(odf, on='date', how='outer', suffixes=['','_old'])
