@@ -16,12 +16,14 @@ credentials = service_account.Credentials.from_service_account_info(
 
 client = bigquery.Client(credentials=credentials)
 
-query = """
+mysite = st.secrets["gbq_site_name"]
+
+query = f"""
 WITH visitors AS (
 SELECT *,
   -- (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_number') AS ga_session_id,
   concat(DATE(TIMESTAMP_MICROS(event_timestamp), "America/New_York"),user_pseudo_id, " ", (SELECT value.int_value FROM unnest(event_params) WHERE key = "ga_session_id")) AS session_id
-FROM `rusty-creek-coffee.analytics_437086730.events_2024*`
+FROM {mysite}
 )
 SELECT
   PARSE_DATE('%Y%m%d', event_date) AS date,
@@ -45,7 +47,6 @@ ORDER BY user_pseudo_id, session_id, event_timestamp
 
 # Website title
 st.title("Coffee Sales Analysis :coffee:")
-
 
 # Perform query
 # Uses st.cache_data to only rerun when the query changes or after 10 min.
@@ -174,8 +175,12 @@ coffee_sales.reset_index(inplace=True)
 coffee_sales.rename(columns={'date': 'ds', 'revenue': 'y'}, inplace=True)
 
 # Fit prophet model
-coffee_sales_model = Prophet(interval_width=0.95)
+coffee_sales_model = Prophet(interval_width=0.95, growth='linear', weekly_seasonality=False)
 coffee_sales_model.fit(coffee_sales)
+
+# help(coffee_sales_model)
+
+# num_days_future=10
 
 # Forecast using the model
 coffee_sales_forecast = coffee_sales_model.make_future_dataframe(periods=num_days_future, freq='D')
@@ -183,7 +188,9 @@ coffee_sales_forecast = coffee_sales_model.predict(coffee_sales_forecast)
 
 plt.figure(figsize=(18, 6))
 ax = coffee_sales_model.plot(coffee_sales_forecast, xlabel = 'Date', ylabel = 'Sales', include_legend=True)
-plt.title('Coffee Sales');
+plt.plot(coffee_sales['ds'], coffee_sales['y'], c='black', label='Actual Sales')
+plt.title('Coffee Sales')
+plt.legend()
 
 # Projected daily sales 12 months from now
 sales_next_year = coffee_sales_forecast['yhat'].tolist()[-1]
