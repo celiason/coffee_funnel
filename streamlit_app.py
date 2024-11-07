@@ -117,6 +117,7 @@ coffee_sales.reset_index(inplace=True)
 # odf = pd.merge_ordered(odf, old_data, fill_method='ffill')
 
 odf = pd.read_csv("data/revenue_by_date.csv")
+odf['date'] = pd.to_datetime(odf['date'])
 
 # Do an outer join
 coffee_sales = coffee_sales.merge(odf, on='date', how='outer', suffixes=['','_old'])
@@ -155,6 +156,13 @@ num_days_future = st.slider('Days out for forecasting', 0, 365)
 
 ### Prophet!
 
+# For logistic regression
+cap = 1000
+floor = 0
+
+coffee_sales['cap'] = cap
+coffee_sales['floor'] = floor
+
 # Fit prophet model
 coffee_sales_model = Prophet(interval_width=0.95, growth='linear', daily_seasonality=True, weekly_seasonality=False)
 coffee_sales_model.fit(coffee_sales)
@@ -163,6 +171,8 @@ coffee_sales_model.fit(coffee_sales)
 
 # Forecast using the model
 coffee_sales_forecast = coffee_sales_model.make_future_dataframe(periods=num_days_future, freq='D')
+coffee_sales_forecast['floor'] = floor
+coffee_sales_forecast['cap'] = cap
 coffee_sales_forecast = coffee_sales_model.predict(coffee_sales_forecast)
 
 plt.figure(figsize=(18, 6))
