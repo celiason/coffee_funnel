@@ -196,7 +196,7 @@ num_days_future = st.slider('Days out for forecasting', 0, 365)
 ### Prophet!
 
 # Fit prophet model
-coffee_sales_model = Prophet(interval_width=0.95, growth='linear')
+coffee_sales_model = Prophet(interval_width=0.95, growth='linear', daily_seasonality=False)
 coffee_sales_model.fit(coffee_sales)
 
 # num_days_future=365
