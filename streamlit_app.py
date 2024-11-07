@@ -104,12 +104,11 @@ st.plotly_chart(fig)
 
 
 # Setup sales data
-
 coffee_sales = df.groupby(['date'])[['revenue']].apply('sum')
 coffee_sales.reset_index(inplace=True)
 
 # Backfill with old GA4 data
-old_data = pd.read_csv("data/data-export.csv", skiprows=8)
+old_data = pd.read_csv("data/data-export.csv")
 dates = pd.date_range(start='2023-11-06', end='2024-11-06', freq='W')
 old_data['date'] = dates[old_data['Nth week'].values-1]
 old_data['revenue'] = old_data['Total revenue'] / 7
