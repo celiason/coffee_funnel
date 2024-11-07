@@ -206,9 +206,9 @@ coffee_sales_forecast = coffee_sales_model.make_future_dataframe(periods=num_day
 coffee_sales_forecast = coffee_sales_model.predict(coffee_sales_forecast)
 
 plt.figure(figsize=(18, 6))
-ax = coffee_sales_model.plot(coffee_sales_forecast, xlabel = 'Date', ylabel = 'Sales', include_legend=True)
-plt.plot(coffee_sales['ds'], coffee_sales['y'], c='black', label='Actual Daily Sales', linewidth=0.25)
-plt.title('Coffee Sales')
+ax = coffee_sales_model.plot(coffee_sales_forecast, xlabel = 'Date', ylabel = 'Projected Daily Revenue', include_legend=True)
+plt.plot(coffee_sales['ds'], coffee_sales['y'], c='black', label='Actual Daily Revenue', linewidth=0.25)
+# plt.title('Coffee Sales')
 plt.legend()
 
 # Projected daily sales 12 months from now
