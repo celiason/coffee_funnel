@@ -8,6 +8,7 @@ from google.oauth2 import service_account
 from google.cloud import bigquery
 from src.funnel import funnel
 import plotly.express as px
+from prophet import Prophet
 
 # Create API client.
 credentials = service_account.Credentials.from_service_account_info(
@@ -143,7 +144,33 @@ else:
 fig.update_yaxes(title=None)
 st.plotly_chart(fig)
 
-num_days_past = len(df['date'].unique())
+# Setup sales data
+
+coffee_sales = df.groupby(['date'])[['revenue']].apply('sum')
+coffee_sales.reset_index(inplace=True)
+
+# Backfill with old GA4 data
+old_data = pd.read_csv("data/data-export.csv", skiprows=8)
+dates = pd.date_range(start='2023-11-06', end='2024-11-06', freq='W')
+old_data['date'] = dates[old_data['Nth week'].values-1]
+old_data['revenue'] = old_data['Total revenue'] / 7
+odf = pd.DataFrame()
+odf['date'] = pd.date_range(start='2023-11-06', end='2024-11-05', freq='D')
+odf = pd.merge_ordered(odf, old_data, fill_method='ffill')
+
+# Do an outer join
+coffee_sales = coffee_sales.merge(odf, on='date', how='outer', suffixes=['','_old'])
+
+# Keep new values if not NA
+coffee_sales['revenue'] = np.where(coffee_sales['revenue'].isna(), coffee_sales['revenue_old'], coffee_sales['revenue'])
+coffee_sales = coffee_sales.dropna(subset='revenue')
+
+# Rename for prophet model
+coffee_sales.rename(columns={'date': 'ds', 'revenue': 'y'}, inplace=True)
+
+# Number of days with historic sales data
+num_days_past = len(coffee_sales['ds'].unique())
+
 
 # Show the forecast
 
@@ -168,19 +195,11 @@ num_days_future = st.slider('Days out for forecasting', 0, 365)
 
 ### Prophet!
 
-from prophet import Prophet
-
-coffee_sales = df.groupby(['date'])[['revenue']].apply('sum')
-coffee_sales.reset_index(inplace=True)
-coffee_sales.rename(columns={'date': 'ds', 'revenue': 'y'}, inplace=True)
-
 # Fit prophet model
-coffee_sales_model = Prophet(interval_width=0.95, growth='linear', weekly_seasonality=False)
+coffee_sales_model = Prophet(interval_width=0.95, growth='linear')
 coffee_sales_model.fit(coffee_sales)
 
-# help(coffee_sales_model)
-
-# num_days_future=10
+# num_days_future=365
 
 # Forecast using the model
 coffee_sales_forecast = coffee_sales_model.make_future_dataframe(periods=num_days_future, freq='D')
@@ -188,7 +207,7 @@ coffee_sales_forecast = coffee_sales_model.predict(coffee_sales_forecast)
 
 plt.figure(figsize=(18, 6))
 ax = coffee_sales_model.plot(coffee_sales_forecast, xlabel = 'Date', ylabel = 'Sales', include_legend=True)
-plt.plot(coffee_sales['ds'], coffee_sales['y'], c='black', label='Actual Sales')
+plt.plot(coffee_sales['ds'], coffee_sales['y'], c='black', label='Actual Daily Sales', linewidth=0.25)
 plt.title('Coffee Sales')
 plt.legend()
 
