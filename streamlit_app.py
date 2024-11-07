@@ -206,18 +206,18 @@ coffee_sales_forecast = coffee_sales_model.make_future_dataframe(periods=num_day
 coffee_sales_forecast = coffee_sales_model.predict(coffee_sales_forecast)
 
 plt.figure(figsize=(18, 6))
-ax = coffee_sales_model.plot(coffee_sales_forecast, xlabel = 'Date', ylabel = 'Projected Daily Revenue', include_legend=True)
+ax = coffee_sales_model.plot(coffee_sales_forecast, xlabel='Date', ylabel='Projected Daily Revenue', include_legend=True)
 # plt.plot(coffee_sales['ds'], coffee_sales['y'], c='black', label='Actual Daily Revenue', linewidth=0.25)
 # plt.title('Coffee Sales')
 plt.legend()
+st.pyplot(ax)
 
 # Projected daily sales 12 months from now
 sales_next_year = coffee_sales_forecast['yhat'].tolist()[-1]
 
 # Projected total annual sales
-sales_sum_year = coffee_sales_forecast['yhat'].sum()
-
-st.pyplot(ax)
+idx = coffee_sales_forecast['ds'] > coffee_sales['ds'].max()
+sales_sum_year = coffee_sales_forecast.loc[idx, 'yhat'].sum()
 
 # If we only have past data
 if num_days_future == 0:
