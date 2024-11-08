@@ -152,7 +152,23 @@ st.write(f"The analysis uses Facebook's `Prophet` package in `python` to run an 
 
 # if run_forecast:
 
-num_days_future = st.slider('Days out for forecasting', 0, 365)
+freq = st.radio(label='Sales frequency for graphing:', options=['Daily', 'Weekly', 'Monthly'])
+
+if freq == 'Weekly':
+    # Average by week
+    df_sales = coffee_sales.groupby(pd.Grouper(key='ds', freq='W')).mean()
+    df_sales.reset_index(inplace=True)
+elif freq == 'Daily':
+    df_sales = coffee_sales
+    df_sales.reset_index(inplace=True)
+elif freq == 'Monthly':
+    # Average by month
+    df_sales = coffee_sales.groupby(pd.Grouper(key='ds', freq='M')).mean()
+    df_sales.reset_index(inplace=True)
+
+fcast = st.slider('Months out for forecasting:', 0, 36)
+
+num_days_future = int(fcast * 30.4375)
 
 ### Prophet!
 
@@ -168,7 +184,8 @@ if growth_model == 'logistic':
 
 # Fit prophet model
 coffee_sales_model = Prophet(interval_width=0.95, growth=growth_model, daily_seasonality=True, weekly_seasonality=False)
-coffee_sales_model.fit(coffee_sales)
+# coffee_sales_model.fit(coffee_sales)
+coffee_sales_model.fit(df_sales)
 
 # num_days_future=365
 
@@ -183,7 +200,7 @@ coffee_sales_forecast = coffee_sales_model.predict(coffee_sales_forecast)
 
 plt.figure(figsize=(18, 6))
 ax = coffee_sales_model.plot(coffee_sales_forecast, xlabel='Date', ylabel='Projected Daily Revenue', include_legend=True)
-# plt.plot(coffee_sales['ds'], coffee_sales['y'], c='black', label='Actual Daily Revenue', linewidth=0.25)
+plt.plot(df_sales['ds'], df_sales['y'], c='black', label='Actual Daily Revenue', linewidth=0.25)
 # plt.title('Coffee Sales')
 plt.legend()
 st.pyplot(ax)
