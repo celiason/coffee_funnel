@@ -88,6 +88,11 @@ df_funnel_regions['event_new'] = df_funnel_regions['event'].replace({'page_view'
 
 # Pick regions of interest
 picks = df_funnel_regions['region'].unique()
+picks = picks[picks!='']
+
+# TODO: make the multiselect show number of users by state
+# df_funnel_regions[df_funnel_regions['event']=='page_view']['count']
+# df_funnel_regions[df_funnel_regions['event']=='page_view']['region']
 
 # Here the user can pick states
 selected_regions = st.multiselect('Choose states:', picks)
@@ -152,22 +157,23 @@ st.write(f"The analysis uses Facebook's `Prophet` package in `python` to run an 
 
 # if run_forecast:
 
-freq = st.radio(label='Sales frequency for graphing:', options=['Daily', 'Weekly', 'Monthly'])
+freq = st.radio(label='Sales frequency for graphing:', options=['Daily', 'Weekly', 'Monthly'], index=1)
 
 if freq == 'Weekly':
     # Average by week
-    df_sales = coffee_sales.groupby(pd.Grouper(key='ds', freq='W')).mean()
+    df_sales = coffee_sales.groupby(pd.Grouper(key='ds', freq='W')).sum()
     df_sales.reset_index(inplace=True)
 elif freq == 'Daily':
     df_sales = coffee_sales
     df_sales.reset_index(inplace=True)
 elif freq == 'Monthly':
     # Average by month
-    df_sales = coffee_sales.groupby(pd.Grouper(key='ds', freq='M')).mean()
+    df_sales = coffee_sales.groupby(pd.Grouper(key='ds', freq='M')).sum()
     df_sales.reset_index(inplace=True)
 
 fcast = st.slider('Months out for forecasting:', 0, 36)
 
+# convert mongths to days
 num_days_future = int(fcast * 30.4375)
 
 ### Prophet!
@@ -182,9 +188,12 @@ if growth_model == 'logistic':
     coffee_sales['cap'] = cap
     coffee_sales['floor'] = floor
 
-# Fit prophet model
-coffee_sales_model = Prophet(interval_width=0.95, growth=growth_model, daily_seasonality=True, weekly_seasonality=False)
-# coffee_sales_model.fit(coffee_sales)
+# Initiate prophet model
+coffee_sales_model = Prophet(interval_width=0.95, growth=growth_model,
+                             daily_seasonality=False,
+                             weekly_seasonality=False)
+
+# Fit the model
 coffee_sales_model.fit(df_sales)
 
 # num_days_future=365
@@ -197,16 +206,21 @@ if growth_model == 'logistic':
     coffee_sales_forecast['cap'] = cap
 
 coffee_sales_forecast = coffee_sales_model.predict(coffee_sales_forecast)
+# coffee_sales_model.plot_components(fcst=coffee_sales_forecast)
+# plt.savefig('test.png')
 
 plt.figure(figsize=(18, 6))
-ax = coffee_sales_model.plot(coffee_sales_forecast, xlabel='Date', ylabel='Projected Daily Revenue', include_legend=True)
-plt.plot(df_sales['ds'], df_sales['y'], c='black', label='Actual Daily Revenue', linewidth=0.25)
+ax = coffee_sales_model.plot(coffee_sales_forecast, xlabel='Date', ylabel=f'Projected {freq} Revenue', include_legend=True)
+plt.plot(df_sales['ds'], df_sales['y'], c='black', label=f'Actual {freq} Revenue', linewidth=0.25)
 # plt.title('Coffee Sales')
 plt.legend()
 st.pyplot(ax)
 
+# A lookup dictionary for converting text to numbers in calcs below
+freq_convert = {'Weekly': 7, 'Daily': 1, 'Monthly': 30.4375}
+
 # Projected daily sales 12 months from now
-sales_next_year = coffee_sales_forecast['yhat'].tolist()[-1]
+sales_next_year = coffee_sales_forecast['yhat'].tolist()[-1] / freq_convert[freq]
 
 # Total past sales
 idx = coffee_sales_forecast['ds'] < coffee_sales['ds'].max()
@@ -214,11 +228,14 @@ sales_sum_past = coffee_sales_forecast.loc[idx, 'yhat'].sum()
 
 # Projected total annual sales
 idx = coffee_sales_forecast['ds'] > coffee_sales['ds'].max()
-sales_sum_future = coffee_sales_forecast.loc[idx, 'yhat'].sum()
+
+# Note we need to scale by the frequency selected above
+sales_sum_future = coffee_sales_forecast.loc[idx, 'yhat'].sum() / freq_convert[freq]
 
 # If we only have past data
 if num_days_future == 0:
     st.write(f"Total revenue over the last {num_days_past} days: ${sales_sum_past:,.2f} :moneybag:")
+
 # If we are looking into the future
 else:
     st.write(f"According to the model, the projected daily sales {num_days_future} days from now will be: ${sales_next_year:,.2f}")
