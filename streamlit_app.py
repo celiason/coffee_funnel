@@ -134,6 +134,9 @@ coffee_sales = coffee_sales.dropna(subset='revenue')
 # Rename for prophet model
 coffee_sales.rename(columns={'date': 'ds', 'revenue': 'y'}, inplace=True)
 
+# Calculate total past sales
+sales_sum_past = coffee_sales['y'].sum()
+
 # Number of days with historic sales data
 num_days_past = len(coffee_sales['ds'].unique())
 
@@ -223,8 +226,8 @@ freq_convert = {'Weekly': 7, 'Daily': 1, 'Monthly': 30.4375}
 sales_next_year = coffee_sales_forecast['yhat'].tolist()[-1] / freq_convert[freq]
 
 # Total past sales
-idx = coffee_sales_forecast['ds'] < coffee_sales['ds'].max()
-sales_sum_past = coffee_sales_forecast.loc[idx, 'yhat'].sum()
+# idx = coffee_sales_forecast['ds'] < coffee_sales['ds'].max()
+# sales_sum_past = coffee_sales_forecast.loc[idx, 'yhat'].sum()
 
 # Projected total annual sales
 idx = coffee_sales_forecast['ds'] > coffee_sales['ds'].max()
