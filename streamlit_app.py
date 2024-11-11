@@ -95,7 +95,7 @@ picks = picks[picks!='']
 # df_funnel_regions[df_funnel_regions['event']=='page_view']['region']
 
 # Here the user can pick states
-selected_regions = st.multiselect('Choose states:', picks)
+selected_regions = st.multiselect('Choose regions:', picks)
 
 # Create a funnel plot
 if len(selected_regions) == 0:
